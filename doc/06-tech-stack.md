@@ -1,0 +1,103 @@
+# 06. 技術選型與開發環境
+
+## 技術選型
+
+| 項目 | 選擇 | 理由／備註 |
+| --- | --- | --- |
+| 後端框架 | Laravel 12 | 穩定版；13 屬嘗鮮版暫不用（issue #2） |
+| 語言 | PHP 8.2+ | Laravel 12 最低需求 |
+| 套件管理 | Composer 2 | |
+| 資料庫 | PostgreSQL 16 | `.env.example` 預設 `DB_CONNECTION=pgsql` |
+| 權限 | spatie/laravel-permission | 角色與使用者對應直接用套件表 |
+| 前端 | **待確認** | 候選：Blade + Livewire、Inertia + Vue。P0 以最少前端建置為原則 |
+| 佇列 | database driver（P0） | 通知模組需要；之後可換 Redis |
+| 排程 | Laravel scheduler | Airtable 同步 |
+| 檔案儲存 | local disk（P0） | 照片、活動檔案；之後可換 S3 相容儲存 |
+| 容器 | Docker Compose | 一鍵啟動（issue #3） |
+
+## 專案結構
+
+Laravel 骨架建在 repo 根目錄，讓 docker compose 直接以根目錄為 context。
+
+```
+event-platform/
+├── app/
+│   ├── Models/
+│   ├── Http/Controllers/
+│   ├── Enums/               # 狀態列舉
+│   ├── Services/Airtable/   # 同步邏輯
+│   └── Console/Commands/    # airtable:sync 等指令
+├── database/
+│   ├── migrations/          # 依模組分檔，見 03-data-model.md
+│   └── seeders/             # roles、supply_types、respond_fields、file_categories 初始資料
+├── doc/                     # 本資料夾
+├── docker/                  # Dockerfile、nginx 設定
+├── docker-compose.yml
+├── .env.example
+└── .claude/skills/          # AI 開發流程 skill
+```
+
+P0 先用標準 Laravel 目錄；模組多了再考慮 `app/Modules/<Module>/` 拆分，避免過度設計。
+
+## Docker Compose（issue #3）
+
+目標：clone 下來後 `docker compose up -d` 就能跑。
+
+| 服務 | 映像 | 用途 |
+| --- | --- | --- |
+| `app` | php:8.2-fpm 自建 | Laravel |
+| `web` | nginx | 反向代理到 app |
+| `db` | postgres:16 | 資料庫，volume 持久化 |
+| `queue` | 同 app | `php artisan queue:work` |
+| `scheduler` | 同 app | `php artisan schedule:work` |
+
+首次啟動需要的步驟寫成 `Makefile` 或 script：
+
+```bash
+cp .env.example .env
+docker compose up -d
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --seed
+```
+
+## 環境變數
+
+`.env.example` 進版控作為範本，`.env` 不進版控。
+
+```
+APP_NAME="FNC Event Platform"
+APP_ENV=local
+APP_KEY=
+APP_URL=http://localhost
+
+DB_CONNECTION=pgsql
+DB_HOST=db
+DB_PORT=5432
+DB_DATABASE=event_platform
+DB_USERNAME=postgres
+DB_PASSWORD=
+
+QUEUE_CONNECTION=database
+
+# Airtable sync (issue #5)
+AIRTABLE_API_TOKEN=
+AIRTABLE_BASE_ID=
+AIRTABLE_EVENT_TABLE=
+AIRTABLE_TEACHER_TABLE=
+AIRTABLE_SYNC_SINCE=2025-10-01
+
+# 歷史統計基底（2025-10 前已辦成場次）
+STATS_HISTORICAL_EVENT_COUNT=900
+```
+
+## 本機開發需求
+
+- Docker 與 Docker Compose v2
+- 若不用 Docker：PHP 8.2+、Composer 2、PostgreSQL 16、Node 20+（前端建置時）
+
+## 待確認事項
+
+- 前端方案。
+- 正式環境部署位置（VPS？雲端？）與 CI/CD。
+- OAuth 提供者（Google？LINE？）。
