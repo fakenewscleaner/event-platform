@@ -3,12 +3,15 @@
 所有資料表都有 `id`、`created_at`、`updated_at`；下面不重複列。
 需要軟刪除的表（`event`、`user`、`article`、`photo`）另加 `deleted_at`。
 
+所有 `datetime` 欄位用 Laravel 的 `timestamp()`（PG 的 `timestamp without time zone`），**一律存 UTC**，
+顯示時才轉 `Asia/Taipei`，見 [06-tech-stack.md](06-tech-stack.md) 的「時區」。
+
 ## ER 圖
 
 ```mermaid
 erDiagram
     user ||--o| volunteer : "延伸"
-    user ||--o| teacher : "延伸(可省略)"
+    user ||--o| teacher : "延伸"
     user }o--o{ role : "model_has_roles"
 
     event ||--|| event_data : "1:1"
@@ -60,15 +63,14 @@ erDiagram
 | `event_id` | FK event, unique | 一對一 |
 | `start_at` | datetime | 開始時間 |
 | `end_at` | datetime, nullable | 結束時間 |
-| `place_id` | FK place, nullable | 地點 |
-| `city` | string, nullable | 縣市（未來可加下一層行政區） |
+| `place_id` | FK place, nullable | 地點（縣市一律從 `place.city` join 取得，本表不存 `city`） |
 | `topic` | string, nullable | 課程主題（放主題、投影片標題） |
 | `event_type` | string | 活動性質（選項可由管理員增加） |
 | `audience_type` | string, nullable | 聽眾類型（選項待討論） |
 | `capacity` | int, nullable | 志工需求數（總召填寫，系統自有欄位） |
 | `expected_attendees` | int, nullable | 預計學員人數（系統自有欄位） |
 | `registration_deadline` | datetime, nullable | 報名截止 |
-| `participant_count` | int, nullable | 實際參與人數 |
+| `participant_count` | int, nullable | 實際參與人數（已定案放這裡，不改記為 `event_statistic`） |
 | `calendar_url` | string, nullable | Google Calendar 連結 |
 | `note` | text, nullable | 備註（聯絡資訊、需求、特殊狀況；來自 Airtable） |
 | `volunteer_note` | text, nullable | 給志工看的備註（系統自有欄位，會呈現在志工系統） |
@@ -122,7 +124,7 @@ Airtable 的「地點」是純文字，匯入時要對應或新建。
 
 | 欄位 | 型別 | 說明 |
 | --- | --- | --- |
-| `display_name` | string | 顯示名稱 |
+| `name` | string | 顯示名稱。沿用 Laravel 預設的 `name` 欄位，不改名成 `display_name`，以免與 starter kit 的 factory、註冊表單脫節 |
 | `real_name` | string, nullable | 本名，只在管理頁顯示 |
 | `email` | string, unique | |
 | `password` | string, nullable | OAuth 登入者可為空 |
@@ -146,9 +148,9 @@ Airtable 的「地點」是純文字，匯入時要對應或新建。
 | `phone` | string, nullable | |
 | `line_id` | string, nullable | |
 
-### teacher 講師簡介（可省略）
+### teacher 講師簡介
 
-講師身分靠角色 `lecturer`，講師與活動的關係靠 `event_teacher`。這張表只放簡介，P0 可以不建。
+講師身分靠角色 `lecturer`，講師與活動的關係靠 `event_teacher`。這張表只放簡介，**P0 一併建立**（欄位少、成本低），Model 與頁面之後再說。
 
 | 欄位 | 型別 | 說明 |
 | --- | --- | --- |
@@ -235,13 +237,14 @@ Airtable 的「地點」是純文字，匯入時要對應或新建。
 
 ### role 角色
 
+**直接用 `spatie/laravel-permission` 發佈的 `roles` 表，不自建、不加欄位。**
+
 | 欄位 | 型別 | 說明 |
 | --- | --- | --- |
-| `name` | string | 顯示名稱 |
-| `slug` | string, unique | `admin` / `core` / `coordinator` / `lecturer` / `volunteer` / `marketer` |
-| `description` | text, nullable | |
+| `name` | string | 存 slug：`admin` / `core` / `coordinator` / `lecturer` / `volunteer` / `marketer` |
+| `guard_name` | string | 套件欄位，固定 `web` |
 
-若採用 `spatie/laravel-permission`，就用套件的 `roles` 表，不自建。
+中文顯示名稱與說明放語系檔（`lang/zh_TW/roles.php`），不進資料庫；要改中文顯示不必動 schema。
 
 ### article 行銷文章
 
@@ -302,13 +305,25 @@ Airtable 的「地點」是純文字，匯入時要對應或新建。
 | `name` | string | |
 | `sort` | int | |
 
+### 初始資料（seeder）
+
+| 表 | 初始項目 |
+| --- | --- |
+| `roles` | `admin`、`core`、`coordinator`、`lecturer`、`volunteer`、`marketer` |
+| `supply_types` | 扇子、肥皂、傳單 |
+| `respond_fields` | **待提供** |
+| `file_categories` | **待提供** |
+
+`supply_types` 的單位與三個旗標（`can_request` / `show_in_report` / `is_counted`）尚未指定，見待確認事項。
+seeder 一律寫成冪等（`upsert`），重跑不會產生重複資料。
+
 ## 關聯表
 
 | 表 | 連結 | 額外欄位 | 說明 |
 | --- | --- | --- | --- |
 | `model_has_roles` | user ↔ role | — | 由 spatie/laravel-permission 提供 |
 | `event_teacher` | event ↔ user | `is_payee`（領款的講師）、`fee_amount`、`fee_status`、`fee_note`、`submitted_at` | 對應 Airtable「講師」+「領款的講師」；講師回報頁寫這裡 |
-| `event_coordinator` | event ↔ user | `assigned_at` | 「我負責的場次」。若確定一個活動只有一位總召，可改成 `event.coordinator_id` |
+| `event_coordinator` | event ↔ user | `assigned_at` | 「我負責的場次」。**一個活動可以有多位總召**，所以維持關聯表，不簡化成 `event.coordinator_id` |
 | `notification_recipient` | notification ↔ user | `delivered_at`、`read_at`、`error` | |
 | `event_supply_request` | event ↔ supply_type | `quantity`、`note`、`requested_by`、`status`（`requested` / `approved` / `fulfilled`） | 「提出物資需求」 |
 | `respond_answer` | respond ↔ respond_field | `value` | `(respond_id, respond_field_id)` 唯一 |
@@ -354,7 +369,17 @@ Airtable 的「地點」是純文字，匯入時要對應或新建。
 
 ## 待確認事項
 
-- `participant_count`（參與人數）放 `event_data` 還是改記為 `event_statistic` 的一種 `supply_type`？試算表兩處寫法不同，目前採 `event_data`。
-- `teacher` 表 P0 是否建立。
-- 一個活動是否確定只有一位總召（影響 `event_coordinator` 是否簡化為欄位）。
-- `city` 同時出現在 `event_data` 與 `place`，是否只保留 `place.city` 並由活動 join 取得。
+- `respond_field`（回饋題目）的初始題目清單。
+- `file_category`（檔案類別）的初始項目清單。
+- `supply_type` 三個初始項目的單位，以及 `can_request` / `show_in_report` / `is_counted` 三個旗標各自要開哪些。
+- `fee_status` 出現在兩處：`event_admin.fee_status` 與 `event_teacher.fee_status`。前者理解為「單位付給協會」的進度、後者為「協會付給個別講師」的進度，語意待確認，以免兩邊資料打架。
+- `event_type`、`audience_type` 的選項清單（見上方 `event_data` 說明）。
+
+### 已定案（原待確認）
+
+- `participant_count` 放 `event_data`，不改記為 `event_statistic`。
+- `teacher` 表 P0 一併建立。
+- 一個活動可以有多位總召，`event_coordinator` 維持關聯表。
+- `city` 只留 `place.city`，`event_data` 不存。
+- `users` 沿用 Laravel 預設的 `name` 欄位當顯示名稱，另加 `real_name`。
+- 角色用 spatie 原生 `roles` 表（`name` + `guard_name`），中文名放語系檔。

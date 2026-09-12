@@ -12,7 +12,7 @@
 | 行銷成員 | `marketer` | 最小權限原則 |
 | 未登入 | （無） | 只看公開頁面，不是資料庫裡的角色 |
 
-- 角色存在 `role` 表，使用者與角色的對應由套件（`spatie/laravel-permission` 的 `model_has_roles`）管理，不另建 `user_role`。
+- 角色存在 spatie 的 `roles` 表，上表的 slug 就是套件的 `name` 欄位；中文顯示名稱放語系檔 `lang/zh_TW/roles.php`，不進資料庫。使用者與角色的對應由套件的 `model_has_roles` 管理，不另建 `user_role`。
 - 一個使用者可以同時有多個角色（例如同時是 `core` 和 `coordinator`）。
 - 總召與講師是「場次層級」的關係，分別記錄在 `event_coordinator` 與 `event_teacher`。
   也就是說有 `coordinator` 角色不代表可以管所有活動，只能管 `event_coordinator` 裡有自己的那些場次。
@@ -105,7 +105,7 @@
 - 活動只有在洽談進度為「已確定、上志工系統」時才對志工顯示，見 [04-airtable-sync.md](04-airtable-sync.md) 的洽談進度對應。
 - `photo.is_public = false` 的照片只有回報模組的「瀏覽成果頁」有權限者能看。
 - `announcement.visible_role` 控制公告對哪些角色顯示。
-- `user.real_name`（本名）只在管理頁顯示，一般志工之間只看 `display_name`。
+- `user.real_name`（本名）只在管理頁顯示，一般志工之間只看 `user.name`（顯示名稱）。
 
 ## 待確認事項
 

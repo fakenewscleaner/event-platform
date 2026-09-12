@@ -70,6 +70,9 @@ APP_NAME="FNC Event Platform"
 APP_ENV=local
 APP_KEY=
 APP_URL=http://localhost
+APP_LOCALE=zh_TW
+APP_TIMEZONE=UTC
+APP_DISPLAY_TIMEZONE=Asia/Taipei
 
 DB_CONNECTION=pgsql
 DB_HOST=db
@@ -90,6 +93,54 @@ AIRTABLE_SYNC_SINCE=2025-10-01
 # 歷史統計基底（2025-10 前已辦成場次）
 STATS_HISTORICAL_EVENT_COUNT=900
 ```
+
+## 時區
+
+**`APP_TIMEZONE=UTC`（Laravel 預設值，固定不改），資料庫一律存 UTC，只在顯示時轉 `Asia/Taipei`。**
+
+理由：Airtable 回傳的時間是帶時區位移的 ISO 8601，轉成 UTC 沒有歧義；套件（queue delay、scheduler、
+`timestamps`）都以 app timezone 運作，維持 Laravel 預設最不會有意外；台灣沒有日光節約時間，顯示轉換是無損的。
+
+Laravel 的具體做法：
+
+1. `config/app.php` 加一個顯示用時區，跟運算用時區分開：
+
+   ```php
+   'timezone' => env('APP_TIMEZONE', 'UTC'),
+   'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Taipei'),
+   ```
+
+2. 顯示層統一走一個 Blade component（或 Carbon macro），不要在各頁面自己 `->timezone()`：
+
+   ```php
+   // app/Providers/AppServiceProvider.php  boot()
+   Carbon::macro('local', fn (string $format = 'Y-m-d H:i') => $this
+       ->copy()
+       ->timezone(config('app.display_timezone'))
+       ->format($format));
+   ```
+
+   ```blade
+   {{ $event->data->start_at->local() }}
+   ```
+
+3. 表單送進來的時間是台北時間，存檔前明確轉換，不要依賴預設：
+
+   ```php
+   $startAt = CarbonImmutable::createFromFormat(
+       'Y-m-d H:i', $request->input('start_at'), config('app.display_timezone')
+   )->utc();
+   ```
+
+4. 排程任務要用台北時間思考時，明講時區，不要靠 app timezone：
+
+   ```php
+   Schedule::command('airtable:sync')->everyFifteenMinutes();
+   Schedule::command('report:daily')->dailyAt('09:00')->timezone(config('app.display_timezone'));
+   ```
+
+5. Migration 用 `timestamp()` 即可，不用 `timestampTz()`：既然全部存 UTC，多存一份位移沒有意義；
+   未來真要跨時區，改 schema 的成本也低於現在多背一層複雜度。
 
 ## 本機開發需求
 

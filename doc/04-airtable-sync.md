@@ -53,7 +53,7 @@ Airtable 的「宣傳進度」改名為「洽談進度」，對應 `event_admin.
 | 開始時間 | `event_data.start_at` | |
 | 結束時間 | `event_data.end_at` | |
 | 地點 | `place`（by name） | 純文字，匯入時對應／新建 |
-| 地區 | `place.city` / `event_data.city` | 選項改為縣市，目標自動處理；未來加下一層行政區 |
+| 地區 | `place.city` | 只寫進 `place.city`（`event_data` 不存 `city`）；選項改為縣市，未來加下一層行政區 |
 | 活動性質 | `event_data.event_type` | 選項精簡，之後可由管理員自行增加 |
 | 聽眾類型 | `event_data.audience_type` | 選項要改，待討論 |
 | 講師 | `event_teacher` | 連結欄位 |
