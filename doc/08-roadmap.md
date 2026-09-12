@@ -10,7 +10,7 @@
 
 | Issue | 內容 | 狀態 |
 | --- | --- | --- |
-| #2 | 建立 Laravel 12 骨架、`.env.example` | 計劃已回覆，待確認後實作 |
+| #2 | 建立 Laravel 12 骨架、`.env.example` | 骨架已建立，待 review |
 | #3 | 一鍵啟動的 Docker Compose | 待計劃 |
 | #4 | 基本資料庫 migration，依模組分檔 | 待計劃 |
 | #5 | Airtable 同步程式，token 放 `.env` | 待計劃 |

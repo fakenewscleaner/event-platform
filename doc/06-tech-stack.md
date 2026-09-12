@@ -79,7 +79,7 @@ DB_HOST=db
 DB_PORT=5432
 DB_DATABASE=event_platform
 DB_USERNAME=postgres
-DB_PASSWORD=
+DB_PASSWORD=secret
 
 QUEUE_CONNECTION=database
 
@@ -93,6 +93,8 @@ AIRTABLE_SYNC_SINCE=2025-10-01
 # 歷史統計基底（2025-10 前已辦成場次）
 STATS_HISTORICAL_EVENT_COUNT=900
 ```
+
+`secret` 僅供本機開發；正式環境請使用獨立帳密。實際 `.env` 不進版控。
 
 ## 時區
 
