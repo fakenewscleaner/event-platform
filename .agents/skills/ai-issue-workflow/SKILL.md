@@ -1,6 +1,6 @@
 ---
 name: ai-issue-workflow
-description: 掃描 fakenewscleaner/event-platform 的 open issue，處理 wait_for 欄位是 AI_plan / AI_explain / AI_coding 的 issue（回覆計劃、回答問題、或動手開發並 commit），完成後把 wait_for 改成 Humain_review。當使用者要求「處理 AI issue」「跑 AI_plan/AI_code 流程」時使用。
+description: 掃描 fakenewscleaner/event-platform 的 open issue，處理 wait_for 欄位是 AI_plan / AI_explain / AI_coding 的 issue（回覆計劃、回答問題、或動手開發並 commit），完成後把 wait_for 改成 Humain_review。當使用者要求「處理 AI issue」「跑 AI_plan/AI_coding 流程」時使用。
 ---
 
 # AI Issue Workflow
