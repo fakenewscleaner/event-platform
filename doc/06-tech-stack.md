@@ -41,25 +41,20 @@ P0 先用標準 Laravel 目錄；模組多了再考慮 `app/Modules/<Module>/` �
 
 ## Docker Compose（issue #3）
 
-目標：clone 下來後 `docker compose up -d` 就能跑。
+使用 Docker Compose 2.24+，clone 後執行 `docker compose up -d --build`，開啟 http://localhost:8000。
+完整使用方式、服務關係、資料保存與驗證指令見 [09-docker.md](09-docker.md)。
 
 | 服務 | 映像 | 用途 |
 | --- | --- | --- |
-| `app` | php:8.2-fpm 自建 | Laravel |
-| `web` | nginx | 反向代理到 app |
+| `init` | 共用 PHP image | 產生並保存金鑰、執行 migration，成功後其他 PHP 服務才啟動 |
+| `app` | php:8.2-fpm-bookworm 自建 | Laravel（含 Composer 依賴與 Node 22 建置的前端資產） |
+| `web` | nginx:stable-alpine 自建 | 靜態資產與 FastCGI 入口 |
 | `db` | postgres:16 | 資料庫，volume 持久化 |
 | `queue` | 同 app | `php artisan queue:work` |
 | `scheduler` | 同 app | `php artisan schedule:work` |
 
-首次啟動需要的步驟寫成 `Makefile` 或 script：
-
-```bash
-cp .env.example .env
-docker compose up -d
-docker compose exec app composer install
-docker compose exec app php artisan key:generate
-docker compose exec app php artisan migrate --seed
-```
+程式碼在 image 建置時複製，修改後需要重新 `docker compose up -d --build`。
+首次啟動不自動執行業務 seed；依需要手動 `docker compose exec app php artisan db:seed`。
 
 ## 環境變數
 
